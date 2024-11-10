@@ -48,8 +48,8 @@ The app supports different formatting modes based on the current application:
 
 Access settings through the menu bar icon:
 - Adjust formality level (casual, auto, formal)
-- Customize email signature
-- Set formatting preferences
+- Customize email signature using casual and formal names
+- Add your Groq API key
 
 ## Development
 
@@ -62,8 +62,7 @@ Built using:
 
 1. Clone the repository
 2. Open the project in Xcode
-3. Add your Groq API key to `AppDelegate.swift`
-4. Build and run
+3. Build and run
 
 ## Privacy
 
