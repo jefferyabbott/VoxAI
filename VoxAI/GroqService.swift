@@ -82,17 +82,18 @@ class GroqService: AIService {
     Text: \(text)
     """
             
-        case .terminal:
+    case .terminal:
             userPrompt = """
-    Format this text as a terminal command:
-    - Convert natural language into a valid command
-    - Include appropriate flags and options
-    - Add comments if needed for clarity
-    - Handle file paths and permissions appropriately
-    - Return only the command (and optional comments)
+        Format this text as a terminal command:
+        - Convert natural language into a valid command
+        - Include appropriate flags and options
+        - If comments are needed, prefix them with #COMMENT# (they will be filtered out)
+        - Handle file paths and permissions appropriately
+        - The first line MUST be the command only, with no prefixes or annotations
+        - Do not include any explanatory text or markdown formatting
 
-    Text: \(text)
-    """
+        Text: \(text)
+        """
             
         case .default:
             userPrompt = """
@@ -169,6 +170,18 @@ class GroqService: AIService {
                 finalFormattedText = formattedText.replacingOccurrences(
                     of: "Your name",
                     with: replacementName)
+            }
+            
+            // Add terminal-specific processing here
+            if context.appType == .terminal {
+                // Get the first line only for terminal commands
+                let lines = finalFormattedText.components(separatedBy: .newlines)
+                if let firstLine = lines.first {
+                    // Remove any #COMMENT# and everything after it from the line
+                    let components = firstLine.components(separatedBy: "#COMMENT#")
+                    let command = components[0].trimmingCharacters(in: .whitespacesAndNewlines)
+                    return command
+                }
             }
             
             NSLog("Successfully formatted text: \(finalFormattedText)")
