@@ -95,7 +95,110 @@ class SettingsViewController: NSViewController {
         
         super.init(nibName: nil, bundle: nil)
         updateApiKeyStatus()
+        setupControls()
     }
+    
+    private func setupControls() {
+            // Set up targets and actions for all controls
+            casualNameField.target = self
+            casualNameField.action = #selector(casualNameChanged(_:))
+            
+            formalNameField.target = self
+            formalNameField.action = #selector(formalNameChanged(_:))
+            
+            formalityControl.target = self
+            formalityControl.action = #selector(formalityChanged(_:))
+            
+            startAtLoginSwitch.target = self
+            startAtLoginSwitch.action = #selector(startAtLoginChanged(_:))
+            
+            // Set initial values from settings
+            casualNameField.stringValue = Settings.shared.casualName
+            formalNameField.stringValue = Settings.shared.formalName
+            formalityControl.selectedSegment = Settings.shared.formalityLevel
+            startAtLoginSwitch.state = Settings.shared.startAtLogin ? .on : .off
+            
+            // Update login item state to match saved preference
+            updateLoginItemState()
+        }
+    
+    private func updateLoginItemState() {
+            if #available(macOS 13.0, *) {
+                // Check actual state of login item
+                let isEnabled = (try? SMAppService.mainApp.status == .enabled) ?? false
+                if isEnabled != Settings.shared.startAtLogin {
+                    // Synchronize the actual state with our saved preference
+                    do {
+                        if Settings.shared.startAtLogin {
+                            try SMAppService.mainApp.register()
+                        } else {
+                            try SMAppService.mainApp.unregister()
+                        }
+                    } catch {
+                        NSLog("Failed to update login item state: \(error.localizedDescription)")
+                        // Update UI to reflect actual state
+                        Settings.shared.startAtLogin = isEnabled
+                        startAtLoginSwitch.state = isEnabled ? .on : .off
+                    }
+                }
+            } else {
+                // For older macOS versions
+                if let bundleIdentifier = Bundle.main.bundleIdentifier {
+                    if !SMLoginItemSetEnabled(bundleIdentifier as CFString, Settings.shared.startAtLogin) {
+                        NSLog("Failed to set login item for older macOS")
+                        // Revert the setting if it failed
+                        Settings.shared.startAtLogin = false
+                        startAtLoginSwitch.state = .off
+                    }
+                }
+            }
+        }
+        
+        @objc private func startAtLoginChanged(_ sender: NSSwitch) {
+            let shouldEnable = (sender.state == .on)
+            
+            if #available(macOS 13.0, *) {
+                do {
+                    if shouldEnable {
+                        try SMAppService.mainApp.register()
+                    } else {
+                        try SMAppService.mainApp.unregister()
+                    }
+                    Settings.shared.startAtLogin = shouldEnable
+                } catch {
+                    NSLog("Failed to set login item: \(error.localizedDescription)")
+                    // Revert switch state on failure
+                    sender.state = shouldEnable ? .off : .on
+                    Settings.shared.startAtLogin = (sender.state == .on)
+                    
+                    // Show error to user
+                    let alert = NSAlert()
+                    alert.messageText = "Failed to Set Login Item"
+                    alert.informativeText = error.localizedDescription
+                    alert.alertStyle = .warning
+                    alert.runModal()
+                }
+            } else {
+                // For older macOS versions
+                if let bundleIdentifier = Bundle.main.bundleIdentifier {
+                    if SMLoginItemSetEnabled(bundleIdentifier as CFString, shouldEnable) {
+                        Settings.shared.startAtLogin = shouldEnable
+                    } else {
+                        NSLog("Failed to set login item")
+                        // Revert the switch state
+                        sender.state = shouldEnable ? .off : .on
+                        Settings.shared.startAtLogin = (sender.state == .on)
+                        
+                        // Show error to user
+                        let alert = NSAlert()
+                        alert.messageText = "Failed to Set Login Item"
+                        alert.informativeText = "Unable to update login item settings"
+                        alert.alertStyle = .warning
+                        alert.runModal()
+                    }
+                }
+            }
+        }
     
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
@@ -288,33 +391,7 @@ class SettingsViewController: NSViewController {
         Settings.shared.formalName = sender.stringValue
     }
     
-    @objc private func startAtLoginChanged(_ sender: NSSwitch) {
-        Settings.shared.startAtLogin = (sender.state == .on)
-        
-        if #available(macOS 13.0, *) {
-            do {
-                if sender.state == .on {
-                    try SMAppService.mainApp.register()
-                } else {
-                    try SMAppService.mainApp.unregister()
-                }
-            } catch {
-                NSLog("Failed to set login item: \(error.localizedDescription)")
-                sender.state = sender.state == .on ? .off : .on
-                Settings.shared.startAtLogin = (sender.state == .on)
-            }
-        } else {
-            // For older macOS versions, use the bundle identifier directly
-            if let bundleIdentifier = Bundle.main.bundleIdentifier {
-                if !SMLoginItemSetEnabled(bundleIdentifier as CFString, sender.state == .on) {
-                    NSLog("Failed to set login item")
-                    // Revert the switch state
-                    sender.state = sender.state == .on ? .off : .on
-                    Settings.shared.startAtLogin = (sender.state == .on)
-                }
-            }
-        }
-    }
+   
 }
 
 
