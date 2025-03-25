@@ -149,7 +149,7 @@ class SettingsViewController: NSViewController {
     private func updateLoginItemState() {
         if #available(macOS 13.0, *) {
             // Check actual state of login item
-            let isEnabled = (try? SMAppService.mainApp.status == .enabled) ?? false
+            let isEnabled = SMAppService.mainApp.status == .enabled
             if isEnabled != Settings.shared.startAtLogin {
                 // Synchronize the actual state with our saved preference
                 do {

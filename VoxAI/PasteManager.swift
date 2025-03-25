@@ -16,7 +16,7 @@ class PasteManager {
     
     func processAndPasteText(_ text: String, withAI: Bool) {
         Task {
-            var formattedText: String
+            let formattedText: String
             
             if withAI {
                 if let aiService = aiService {
@@ -41,8 +41,10 @@ class PasteManager {
                 formattedText = removeSubjectLine(from: text)
             }
             
+            let finalText = formattedText
+            
             await MainActor.run {
-                copyToClipboard(formattedText)
+                copyToClipboard(finalText)
                 performPaste()
             }
         }
